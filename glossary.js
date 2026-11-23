@@ -94,6 +94,8 @@ self.GLOSSARY = [
     namn:'Buntband', info:'Håller ihop och fäster kablar. Svarta UV-beständiga band används utomhus.' },
   { id:'fasten', ord:['kabelfaste','clips','klammer','spikklammer','fastklammer','kabelclips'],
     namn:'Kabelfäste/clips', info:'Fäster kabel eller rör mot underlaget.' },
+  { id:'markning', ord:['markkarta','markskylt','markning','markband','markhylsa','kabelmarkning','marker','skyltar'],
+    namn:'Märkning', info:'Etiketter, skyltar eller hylsor med siffror och tecken för att märka ledare, plintar och apparater så att installationen går att följa och felsöka.' },
   { id:'tejp', ord:['isoleringstejp','tejp','krympslang','krymp'],
     namn:'Isolering (tejp/krympslang)', info:'Isolerar och märker skarvar. Krympslang krymper med värme och tätar.' },
   { id:'jord', ord:['jordskena','potentialutjamning','jordklamma','pe-skena','jordtag'],

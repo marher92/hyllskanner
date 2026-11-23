@@ -38,8 +38,8 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #hint{position:absolute;left:0;right:0;top:calc(26% - 46px);text-align:center;color:#fff;font-weight:600;font-size:15px;text-shadow:0 1px 4px rgba(0,0,0,.6);padding:0 20px}
 #frame.tall ~ #hint{top:calc(14% - 46px)}
 #live{position:absolute;left:12px;right:12px;bottom:14px;color:rgba(255,255,255,.75);font:12px/1.35 ui-monospace,Menlo,monospace;text-align:center;max-height:3.9em;overflow:hidden}
-.tools{position:absolute;left:0;right:0;bottom:56px;display:flex;justify-content:center;gap:12px}
-.pill{background:rgba(255,255,255,.92);color:var(--ink);font-weight:700;padding:12px 18px;border-radius:999px;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.tools{position:absolute;left:0;right:0;bottom:56px;display:flex;justify-content:center;gap:8px}
+.pill{background:rgba(255,255,255,.92);color:var(--ink);font-weight:700;padding:12px 15px;border-radius:999px;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .pill.dark{background:rgba(23,35,59,.75);color:#fff}
 
 /* Start */
@@ -95,6 +95,7 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .muted{color:var(--hint);font-size:13.5px;line-height:1.45}
 .row{display:flex;gap:10px;margin-top:12px}
 .row .btn{flex:1}
+#busyMsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(23,35,59,.92);color:#fff;padding:16px 20px;border-radius:14px;font-weight:700;display:none;z-index:7}
 #err{position:absolute;left:16px;right:16px;top:calc(var(--st) + 66px);background:#b42336;color:#fff;border-radius:12px;padding:12px 14px;font-weight:600;display:none;z-index:4}
 </style>
 </head>
@@ -106,14 +107,17 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     <div id="hint">Rikta rutan mot SE-numret eller produktnamnet</div>
     <div class="top">
       <div class="brand"><img src="logo.png" alt="">Hyllskanner</div>
-      <button class="iconbtn" id="menuBtn" aria-label="Meny">⋯</button>
+      <div style="display:flex;gap:8px"><button class="iconbtn" id="rotBtn" aria-label="Text på höjden">↻</button><button class="iconbtn" id="menuBtn" aria-label="Meny">⋯</button></div>
     </div>
     <div class="tools">
-      <button class="pill" id="typeBtn">⌨︎ Skriv nummer</button>
-      <button class="pill dark" id="rotBtn">↻ Text på höjden</button>
+      <button class="pill" id="typeBtn">⌨︎ Skriv</button>
+      <button class="pill" id="pasteBtn">📋 Klistra in</button>
+      <button class="pill" id="imgBtn">🖼 Bild</button>
     </div>
     <div id="live"></div>
     <div id="err"></div>
+    <input type="file" id="imgInput" accept="image/*" hidden>
+    <div id="busyMsg">Läser bilden…</div>
 
     <div id="start">
       <img src="logo.png" alt="">
@@ -122,6 +126,11 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
       <div class="progress" id="prog" hidden><i></i></div>
       <p id="startMsg" class="muted"></p>
       <button class="cta" id="startBtn">Starta kameran</button>
+      <div class="row" style="width:100%;max-width:320px;margin-top:12px">
+        <button class="btn" id="startPaste" style="background:rgba(255,255,255,.12);color:#fff">📋 Klistra in</button>
+        <button class="btn" id="startImg" style="background:rgba(255,255,255,.12);color:#fff">🖼 Från bild</button>
+      </div>
+      <p class="muted" style="color:#8f9bb5;margin-top:8px">Inventerar du i samma telefon? Kopiera numret eller ta en skärmdump.</p>
       <div id="installTip"></div>
     </div>
   </div>

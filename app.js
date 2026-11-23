@@ -145,7 +145,7 @@
     } else if (r.kind === 'guess' || r.kind === 'gloss') {
       const top = r.guess.top, main = top[0];
       const why = r.kind === 'guess'
-        ? (r.via === 'okänt SE' ? `SE ${esc(fmtCode(r.code))} finns inte i listan. Andra nummer som börjar på ${esc(r.guess.prefix)}` : `Numret lästes bara delvis (${esc(r.code)}…). Nummer som börjar på ${esc(r.guess.prefix)}`)
+        ? (r.via === 'okänt SE' || r.via === 'okänt nummer' ? `${r.via === 'okänt SE' ? 'SE ' : 'Nr '}${esc(fmtCode(r.code))} finns inte i listan. Andra nummer som börjar på ${esc(r.guess.prefix)}` : `Numret lästes bara delvis (${esc(r.code)}…). Nummer som börjar på ${esc(r.guess.prefix)}`)
         : `Inget nummer hittades, men det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>. Sådant`;
       h += `<div class="res-head"><div><div class="res-label">Troligen hylla</div><div class="res-shelf">${esc(main.shelf)}${main.pct != null ? `<small>${main.pct}%</small>` : ''}</div></div>
         <span class="badge b-guess">Fingervisning</span></div>
@@ -195,7 +195,7 @@
     if (p) { const code = p.dataset.pick; show(Object.assign({}, current, { kind: 'exact', code, shelf: engine.shelfOf(code) })); return; }
     if (!a) return;
     const act = a.dataset.act;
-    if (act === 'next') startScan();
+    if (act === 'next') { if (video.srcObject && worker) startScan(); else { $('#sheet').classList.remove('open'); if (!video.srcObject) location.reload(); } }
     if (act === 'confirm') confirm(current.kind === 'exact' ? current.shelf : current.guess.top[0].shelf);
     if (act === 'other') openPicker();
     if (act === 'type') openType();
@@ -214,11 +214,13 @@
   // ---------- Skriv nummer ----------
   function openType() { stopScan(); $('#typeModal').classList.add('open'); $('#typeOut').innerHTML = ''; const f = $('#typeField'); f.value = ''; setTimeout(() => f.focus(), 50); }
   function typed() {
-    const v = $('#typeField').value.toUpperCase().replace(/\s+/g, '');
+    const v = $('#typeField').value.trim();
     if (!v) return null;
-    if (engine.shelfOf(v)) return { kind: 'exact', code: v, shelf: engine.shelfOf(v), via: 'nummer', gloss: [], text: '' };
-    const r = engine.resolve('SE ' + v.replace(/\D/g, ''));
-    return r.kind === 'none' ? null : r;
+    const r = resolveAny(v);
+    if (r.kind !== 'none') return r;
+    const d = v.replace(/\D/g, '');
+    const r2 = d.length >= 2 ? engine.resolve('SE ' + d) : r;
+    return r2.kind === 'none' ? null : r2;
   }
   $('#typeField').addEventListener('input', () => {
     const r = typed();
@@ -233,6 +235,54 @@
   $('#typeField').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#typeGo').click(); });
   $('#typeBtn').addEventListener('click', openType);
 
+  // ---------- Klistra in / läs från bild ----------
+  function hideStart() { const st = $('#start'); if (st) st.remove(); }
+  function resolveAny(text) {
+    const t = (text || '').trim();
+    const compact = t.toUpperCase().replace(/\s+/g, '');
+    if (engine.shelfOf(compact)) return { kind: 'exact', code: compact, shelf: engine.shelfOf(compact), via: 'nummer', gloss: engine.matchGlossary(t), text: t };
+    let r = engine.resolve(t);
+    if (r.kind === 'none' && /^\d{2,7}$/.test(compact)) r = engine.resolve('SE ' + compact);
+    return r;
+  }
+  async function doPaste() {
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch (e) {}
+    if (!text) { openType(); $('#typeOut').innerHTML = '<p class="muted">Kunde inte läsa urklipp – håll fingret i rutan och välj Klistra in.</p>'; return; }
+    stopScan(); hideStart();
+    const r = resolveAny(text);
+    if (r.kind === 'none') { openType(); $('#typeField').value = text.trim().slice(0, 30); $('#typeField').dispatchEvent(new Event('input')); return; }
+    show(r);
+  }
+  async function ensureOCR() {
+    if (worker) return;
+    $('#busyMsg').textContent = 'Laddar textläsning…'; $('#busyMsg').style.display = 'block';
+    await initOCR((st, p) => { $('#busyMsg').textContent = 'Laddar textläsning ' + Math.round(p * 100) + '%'; });
+  }
+  async function readImage(file) {
+    stopScan(); hideStart();
+    const bm = $('#busyMsg');
+    try {
+      await ensureOCR();
+      bm.textContent = 'Läser bilden…'; bm.style.display = 'block';
+      const img = await createImageBitmap(file);
+      const k = Math.min(1, 1800 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const cx = c.getContext('2d'); cx.filter = 'grayscale(1) contrast(1.3)'; cx.drawImage(img, 0, 0, c.width, c.height);
+      const { data } = await worker.recognize(c);
+      bm.style.display = 'none';
+      live.textContent = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      const r = resolveAny(data.text || '');
+      if (r.kind === 'none') { show({ kind: 'glossOnly', gloss: [{ namn: 'okänd vara', info: 'Hittade inget artikelnummer i bilden. Prova att beskära runt numret eller skriv det.', ord: [] }], text: data.text || '' }); return; }
+      show(r);
+    } catch (e) { bm.style.display = 'none'; showErr('Kunde inte läsa bilden.'); console.error(e); }
+  }
+  $('#pasteBtn').addEventListener('click', doPaste);
+  $('#startPaste').addEventListener('click', doPaste);
+  $('#imgBtn').addEventListener('click', () => $('#imgInput').click());
+  $('#startImg').addEventListener('click', () => $('#imgInput').click());
+  $('#imgInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) readImage(f); });
+
   // ---------- Övrigt ----------
   document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
     b.closest('.modal').classList.remove('open');
@@ -240,7 +290,7 @@
   }));
   $('#rotBtn').addEventListener('click', () => {
     tall = !tall; frame.classList.toggle('tall', tall);
-    $('#rotBtn').textContent = tall ? '↺ Text liggande' : '↻ Text på höjden';
+    $('#rotBtn').textContent = tall ? '↺' : '↻'; $('#rotBtn').style.background = tall ? 'var(--cyan)' : '';
     if (scanning) { history = []; $('#hint').textContent = tall ? 'Etiketten står på högkant – rikta rutan längs texten' : 'Rikta rutan mot SE-numret eller produktnamnet'; }
   });
   $('#menuBtn').addEventListener('click', () => {
@@ -295,5 +345,9 @@
     startScan();
   });
 
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    const had = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && $('#start')) location.reload(); });
+    navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
+  }
 })();

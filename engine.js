@@ -43,7 +43,7 @@
 
   // Hitta kandidatnummer i läst text.
   Engine.prototype.findNumbers = function (text) {
-    const out = { se: [], seParts: [], loose: [] };
+    const out = { se: [], seParts: [], loose: [], spaced: [] };
     const lines = text.split(/\n/);
     for (const rawLine of lines) {
       const line = rawLine.replace(/[“”"'‘’]/g, ' ');
@@ -70,10 +70,16 @@
         if (/^[0-9]{7}$/.test(tk.s) || /^[A-Z]{1,2}[0-9]{5,6}$/.test(tk.s) && tk.s.length === 7) {
           out.loose.push(tk.s);
         }
-        if (k + 2 < tokens.length && /^\d{2}$/.test(tk.s) && /^\d{3}$/.test(tokens[k + 1].s) && /^\d{2}$/.test(tokens[k + 2].s)) {
-          const prev = tokens[k - 1], next = tokens[k + 3];
-          const digitNeighbour = (x) => x && /^\d+$/.test(x.s);
-          if (!digitNeighbour(prev) && !digitNeighbour(next)) out.loose.push(tk.s + tokens[k + 1].s + tokens[k + 2].s);
+        // Nummer uppdelat i 2–3 sifferdelar som tillsammans blir 7 siffror (12 345 67, 12345 67, 12 34567 …)
+        const digitTok = (x) => x && /^\d+$/.test(x.s);
+        if (digitTok(tk) && !digitTok(tokens[k - 1])) {
+          let joined = tk.s;
+          for (let j = k + 1; j < Math.min(tokens.length, k + 3) && digitTok(tokens[j]) && joined.length < 7; j++) {
+            joined += tokens[j].s;
+            if (joined.length === 7 && !digitTok(tokens[j + 1]) && !tokens.slice(k + 1, j + 1).some(x => isBlocked(x.i))) {
+              out.loose.push(joined); out.spaced.push(joined);
+            }
+          }
         }
       }
     }
@@ -155,10 +161,10 @@
     if (looseHits.length === 1 && !nums.se.length) return Object.assign(res, { kind: 'exact', code: looseHits[0], shelf: this.shelfOf(looseHits[0]), via: 'nummer' });
     if (looseHits.length > 1 && !nums.se.length) return Object.assign(res, { kind: 'choice', options: looseHits.map(c => ({ code: c, shelf: this.shelfOf(c) })), via: 'nummer' });
 
-    const partial = nums.se[0] || nums.seParts.sort((a, b) => b.length - a.length)[0];
+    const partial = nums.se[0] || nums.spaced[0] || nums.seParts.sort((a, b) => b.length - a.length)[0];
     if (partial) {
       const g = this.guessPrefix(partial);
-      if (g) return Object.assign(res, { kind: 'guess', code: partial, guess: g, via: nums.se[0] ? 'okänt SE' : 'del av SE' });
+      if (g) return Object.assign(res, { kind: 'guess', code: partial, guess: g, via: nums.se[0] ? 'okänt SE' : nums.spaced[0] === partial ? 'okänt nummer' : 'del av SE' });
     }
     if (gloss.length) {
       const sg = this.shelvesForGloss(gloss[0]);
