@@ -136,7 +136,7 @@
         <div class="res-code">${r.via === 'SE' ? 'SE' : 'Nr'} ${esc(fmtCode(r.code))}${engine.learned.codes[r.code] ? ' · inlärd placering' : ''}</div>`;
       h += infoHtml(r, r.code);
       h += mapHtml({ [r.shelf]: 'main' });
-      h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Lagd på ${esc(r.shelf)}</button><button class="btn" data-act="other">Annan hylla</button>
+      h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(r.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
         <button class="btn primary" data-act="next">Skanna nästa</button></div>`;
     } else if (r.kind === 'choice') {
       h += `<div class="res-label">Flera nummer hittades – vilket gäller?</div><div class="choices">` +
@@ -154,14 +154,14 @@
       h += infoHtml(r, r.kind === 'guess' ? r.code : null);
       const hl = {}; top.slice(1).forEach(t => hl[t.shelf] = 'alt'); hl[main.shelf] = 'main';
       h += mapHtml(hl);
-      h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Lagd på ${esc(main.shelf)}</button><button class="btn" data-act="other">Annan hylla</button>
+      h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(main.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
         <button class="btn primary" data-act="next">Skanna igen</button></div>`;
     } else if (r.kind === 'glossOnly') {
       h += `<div class="res-head"><div><div class="res-label">Ingen hylla än</div></div><span class="badge b-none">Okänd placering</span></div>
-        <div class="res-code">Inget artikelnummer hittades. Det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>, men appen vet inte var sådant brukar ligga än. Tala om var du lägger den, så lär den sig.</div>`;
+        <div class="res-code">Inget artikelnummer hittades. Det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>, men appen vet inte var sådant brukar ligga än. Tala om vilken hylla den står på, så lär den sig.</div>`;
       h += infoHtml(r, null);
       h += mapHtml({});
-      h += `<div class="actions"><button class="btn" data-act="other">Jag lade den på …</button><button class="btn" data-act="type">Skriv nummer</button>
+      h += `<div class="actions"><button class="btn" data-act="other">Den står på …</button><button class="btn" data-act="type">Skriv nummer</button>
         <button class="btn primary" data-act="next">Skanna igen</button></div>`;
     }
     body.innerHTML = h;
