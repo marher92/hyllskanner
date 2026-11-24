@@ -100,6 +100,11 @@
     history.push(keyOf(r)); if (history.length > 5) history.shift();
     const k = history[history.length - 1];
     if (k === 'N') return;
+    // Syns en lång sifferföljd men inget nummer känns igen: gissa inte från ord – vänta på numret.
+    if ((r.kind === 'gloss' || r.kind === 'glossOnly') && /\d{5,}|\d{2}\s\d{3}\s\d{2}/.test(r.text)) {
+      $('#hint').textContent = 'Ser ett nummer – håll stilla, undvik blänk';
+      return;
+    }
     const seen = history.filter(x => x === k).length;
     // Exakta nummer: 2 av de senaste 5 läsningarna. Gissningar: 3 av 5, och bara om inget exakt nummer syns.
     const exactSeen = history.some(x => x[0] === 'E' || x[0] === 'C');

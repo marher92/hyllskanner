@@ -52,6 +52,12 @@
       // OBS: "SF" betyder Suomi-Finland på äldre etiketter – aldrig Sverige.
       const re = /(^|[^A-Za-z0-9])(FIN|SF|S ?E|S3|[5$]E|N ?[O0]|F ?[I1l|]|D ?K|S|N)(?![A-Za-z])\s*[:.\-]?\s*([0-9OoIl| ]{2,20})/g;
       let m; const blocked = [];
+      // E-nummer skrivet som "E1822343" (t.ex. i inventeringssystemet). Rätta vanliga felläsningar i siffrorna.
+      const reE = /(^|[^A-Za-z0-9])E[ \-]?([0-9OoIl|SBZ]{7})(?![0-9A-Za-z])/g;
+      while ((m = reE.exec(line))) {
+        const d = m[2].replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/S/g, '5').replace(/B/g, '8').replace(/Z/g, '2');
+        if (/^\d{7}$/.test(d)) { out.se.push(d); blocked.push([m.index, reE.lastIndex]); }
+      }
       while ((m = re.exec(line))) {
         const cc = m[2].toUpperCase().replace(/ /g, '');
         const d = digitsOnly(m[3]);
