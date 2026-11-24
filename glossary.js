@@ -98,6 +98,8 @@ self.GLOSSARY = [
     namn:'Kabelfäste/clips', info:'Fäster kabel eller rör mot underlaget.' },
   { id:'markning', ord:['markkarta','markskylt','markning','markband','markhylsa','kabelmarkning','marker','skyltar'],
     namn:'Märkning', info:'Etiketter, skyltar eller hylsor med siffror och tecken för att märka ledare, plintar och apparater så att installationen går att följa och felsöka.' },
+  { id:'skruv', ord:['skruvpack','skruv','mutter','muttrar','bricka','brickor','franskruv','gangstang','expander','plugg',' m6x',' m8x',' m10x'],
+    namn:'Skruv/fästelement', info:'Skruv, mutter och bricka för att montera till exempel kabelstegar, skenor och apparater. M8x16 betyder metrisk gänga 8 mm och 16 mm lång.' },
   { id:'tejp', ord:['isoleringstejp','tejp','krympslang','krymp'],
     namn:'Isolering (tejp/krympslang)', info:'Isolerar och märker skarvar. Krympslang krymper med värme och tätar.' },
   { id:'jord', ord:['jordskena','potentialutjamning','jordklamma','pe-skena','jordtag'],
