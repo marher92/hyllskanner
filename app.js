@@ -147,11 +147,11 @@
       h += infoHtml(r, r.code);
       h += mapHtml({ [r.shelf]: 'main' });
       h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(r.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
-        <button class="btn primary" data-act="next">Skanna nästa</button>${reportLink()}</div>`;
+        <button class="btn" data-act="next" style="background:#17233b;color:#fff">⏭ Hoppa över</button><button class="btn" data-act="later">🔖 Ta senare</button>${reportLink()}</div>`;
     } else if (r.kind === 'choice') {
       h += `<div class="res-label">Flera nummer hittades – vilket gäller?</div><div class="choices">` +
         r.options.map(o => `<button class="choice" data-pick="${esc(o.code)}"><span>${esc(fmtCode(o.code))}</span><span>${esc(o.shelf)}</span></button>`).join('') +
-        `</div><div class="actions"><button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
+        `</div><div class="actions"><button class="btn" data-act="next" style="background:#17233b;color:#fff">⏭ Hoppa över</button><button class="btn" data-act="later">🔖 Ta senare</button>${reportLink()}</div>`;
     } else if (r.kind === 'guess' || r.kind === 'gloss') {
       const top = r.guess.top, main = top[0];
       const why = r.kind === 'guess'
@@ -165,14 +165,14 @@
       const hl = {}; top.slice(1).forEach(t => hl[t.shelf] = 'alt'); hl[main.shelf] = 'main';
       h += mapHtml(hl);
       h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(main.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
-        <button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
+        <button class="btn" data-act="next" style="background:#17233b;color:#fff">⏭ Hoppa över</button><button class="btn" data-act="later">🔖 Ta senare</button>${reportLink()}</div>`;
     } else if (r.kind === 'glossOnly') {
       h += `<div class="res-head"><div><div class="res-label">Ingen hylla än</div></div><span class="badge b-none">Okänd placering</span></div>
         <div class="res-code">Inget artikelnummer hittades. Det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>, men appen vet inte var sådant brukar ligga än. Tala om vilken hylla den står på, så lär den sig.</div>`;
       h += infoHtml(r, null);
       h += mapHtml({});
       h += `<div class="actions"><button class="btn" data-act="other">Den står på …</button><button class="btn" data-act="type">Skriv nummer</button>
-        <button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
+        <button class="btn" data-act="next" style="background:#17233b;color:#fff">⏭ Hoppa över</button><button class="btn" data-act="later">🔖 Ta senare</button>${reportLink()}</div>`;
     }
     body.innerHTML = h;
     $('#sheet').classList.add('open');
@@ -205,11 +205,48 @@
     if (p) { const code = p.dataset.pick; show(Object.assign({}, current, { kind: 'exact', code, shelf: engine.shelfOf(code) })); return; }
     if (!a) return;
     const act = a.dataset.act;
-    if (act === 'next') { if (video.srcObject && worker) startScan(); else { $('#sheet').classList.remove('open'); if (!video.srcObject) location.reload(); } }
+    if (act === 'next') startScanOrClose();
     if (act === 'confirm') confirm(current.kind === 'exact' ? current.shelf : current.guess.top[0].shelf);
     if (act === 'other') openPicker();
     if (act === 'type') openType();
     if (act === 'report') openReport();
+    if (act === 'later') { saveLater(); startScanOrClose(); }
+  });
+
+  function startScanOrClose() {
+    if (video.srcObject && worker) startScan();
+    else { $('#sheet').classList.remove('open'); if (!video.srcObject) location.reload(); }
+  }
+
+  // ---------- Att ta senare ----------
+  function saveLater() {
+    const r = current || {}; const L = engine.learned; L.later = L.later || [];
+    const code = r.kind === 'exact' ? r.code : (r.code || null);
+    const info = infoFor(r, code);
+    L.later.push({ tid: new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }), code, kind: r.kind,
+      hylla: r.kind === 'exact' ? r.shelf : (r.guess && r.guess.top[0] ? r.guess.top[0].shelf : null),
+      typ: info.g ? info.g.namn : null, text: (r.text || '').slice(0, 600) });
+    saveLearned();
+    $('#hint').textContent = `🔖 Sparad i "Att ta senare" (${L.later.length}). Rikta mot nästa vara`;
+  }
+  function renderLater() {
+    const list = engine.learned.later || [];
+    $('#laterList').innerHTML = list.length ? list.map((x, i) => `<div class="choice" style="gap:8px"><button data-open="${i}" style="all:unset;flex:1;cursor:pointer">
+      <b>${x.code ? esc(fmtCode(x.code)) : 'Inget nummer'}</b>${x.hylla ? ' · hylla ' + esc(x.hylla) : ''}<br><span class="muted">${esc(x.typ || '')} ${esc(x.tid)}</span></button>
+      <button data-del="${i}" aria-label="Ta bort" style="all:unset;cursor:pointer;color:#b42336;font-size:20px;padding:4px 8px">✕</button></div>`).join('')
+      : '<p class="muted">Listan är tom.</p>';
+  }
+  $('#laterBtn').addEventListener('click', () => { $('#menuModal').classList.remove('open'); renderLater(); $('#laterModal').classList.add('open'); stopScan(); });
+  $('#laterList').addEventListener('click', (e) => {
+    const L = engine.learned; const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
+    if (d) { L.later.splice(+d.dataset.del, 1); saveLearned(); renderLater(); return; }
+    if (!o) return;
+    const x = L.later[+o.dataset.open];
+    let r = x.text ? engine.resolve(x.text) : { kind: 'none', gloss: [], text: '' };
+    if (x.code && engine.shelfOf(x.code) && r.kind !== 'exact') r = Object.assign({}, r, { kind: 'exact', code: x.code, shelf: engine.shelfOf(x.code), via: 'nummer' });
+    if (r.kind === 'none') { $('#laterModal').classList.remove('open'); openType(); if (x.code) { $('#typeField').value = x.code; $('#typeField').dispatchEvent(new Event('input')); } }
+    else { $('#laterModal').classList.remove('open'); show(r); }
+    L.later.splice(+o.dataset.open, 1); saveLearned();
   });
 
   // ---------- Felrapport ----------
@@ -317,14 +354,28 @@
       await ensureOCR();
       bm.textContent = 'Läser bilden…'; bm.style.display = 'block';
       const img = await createImageBitmap(file);
-      const k = Math.min(1, 1800 / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      const cx = c.getContext('2d'); cx.filter = 'grayscale(1) contrast(1.3)'; cx.drawImage(img, 0, 0, c.width, c.height);
-      const { data } = await worker.recognize(c);
+      // Flera omgångar: hela bilden stort, sedan mitten, övre och nedre halvan. Avbryt vid exakt träff.
+      const W = img.width, H = img.height;
+      const passes = [[0, 0, 1, 1, 2400], [0, .25, 1, .75, 1800], [0, 0, 1, .55, 1800], [0, .45, 1, 1, 1800]];
+      let r = null, texts = [];
+      for (let i = 0; i < passes.length; i++) {
+        const [x0, y0, x1, y1, maxSide] = passes[i];
+        bm.textContent = `Läser bilden… (${i + 1}/${passes.length})`;
+        const sw = (x1 - x0) * W, sh = (y1 - y0) * H, k = Math.min(1.5, maxSide / Math.max(sw, sh));
+        const c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+        const cx = c.getContext('2d'); cx.filter = 'grayscale(1) contrast(1.3)';
+        cx.drawImage(img, x0 * W, y0 * H, sw, sh, 0, 0, c.width, c.height);
+        const { data } = await worker.recognize(c);
+        texts.push(data.text || '');
+        const ri = resolveAny(data.text || '');
+        if (ri.kind === 'exact' || ri.kind === 'choice') { r = ri; break; }
+        if (!r || (r.kind === 'none' && ri.kind !== 'none')) r = ri;
+      }
       bm.style.display = 'none';
-      live.textContent = (data.text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
-      const r = resolveAny(data.text || '');
-      if (r.kind === 'none') { show({ kind: 'glossOnly', gloss: [{ namn: 'okänd vara', info: 'Hittade inget artikelnummer i bilden. Prova att beskära runt numret eller skriv det.', ord: [] }], text: data.text || '' }); return; }
+      const all = texts.join('\n');
+      live.textContent = all.replace(/\s+/g, ' ').trim().slice(0, 300);
+      if (r.kind !== 'exact' && r.kind !== 'choice') { const rAll = resolveAny(all); if (rAll.kind !== 'none') r = rAll; }
+      if (r.kind === 'none') { show({ kind: 'glossOnly', gloss: [{ namn: 'okänd vara', info: 'Hittade inget artikelnummer i bilden. Ta en ny bild närmare SE-numret, eller skriv numret.', ord: [] }], text: all }); return; }
       show(r);
     } catch (e) { bm.style.display = 'none'; showErr('Kunde inte läsa bilden.'); console.error(e); }
   }
@@ -349,7 +400,7 @@
   });
   $('#menuBtn').addEventListener('click', () => {
     const L = engine.learned;
-    $('#stats').textContent = `${Object.keys(self.CATALOG).length} artiklar i listan · ${Object.keys(self.PREFIX_RULES).length} prefixregler · ${L.count || 0} bekräftade placeringar · ${Object.keys(L.codes).length} egna/ändrade nummer · ${(L.reports || []).length} felrapporter. Inlärningen sparas bara i den här telefonen.`;
+    $('#stats').textContent = `${Object.keys(self.CATALOG).length} artiklar i listan · ${Object.keys(self.PREFIX_RULES).length} prefixregler · ${L.count || 0} bekräftade placeringar · ${Object.keys(L.codes).length} egna/ändrade nummer · ${(L.reports || []).length} felrapporter · ${(L.later || []).length} att ta senare. Inlärningen sparas bara i den här telefonen.`;
     $('#menuModal').classList.add('open');
   });
   $('#sendRepBtn').addEventListener('click', async () => {
