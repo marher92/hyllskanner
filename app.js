@@ -162,9 +162,12 @@
       const why = r.kind === 'guess'
         ? (r.via === 'okänt SE' || r.via === 'okänt nummer' ? `${r.via === 'okänt SE' ? 'SE ' : 'Nr '}${esc(fmtCode(r.code))} finns inte i listan. Andra nummer som börjar på ${esc(r.guess.prefix)}` : `Numret lästes bara delvis (${esc(r.code)}…). Nummer som börjar på ${esc(r.guess.prefix)}`)
         : `Inget nummer hittades, men det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>. Sådant`;
-      h += `<div class="res-head"><div><div class="res-label">Troligen hylla</div><div class="res-shelf">${esc(main.shelf)}${main.pct != null ? `<small>${main.pct}%</small>` : ''}</div></div>
-        <span class="badge b-guess">Fingervisning</span></div>
-        <div class="res-code">${why} ${r.guess.examples ? `har lagts här tidigare (${r.guess.n} ${r.guess.n === 1 ? 'exempel' : 'exempel'})` : `ligger oftast här${r.guess.n ? ` (${r.guess.n} kända artiklar)` : ''}`}.</div>`;
+      const byRule = r.guess.source === 'regel';
+      h += `<div class="res-head"><div><div class="res-label">${byRule ? 'Hylla enligt hyllguiden' : 'Troligen hylla'}</div><div class="res-shelf">${esc(main.shelf)}${main.pct != null ? `<small>${main.pct}%</small>` : ''}</div></div>
+        <span class="badge ${byRule ? 'b-ok' : 'b-guess'}">${byRule ? '📗 Hyllguiden' : 'Fingervisning'}</span></div>
+        <div class="res-code">${byRule
+          ? `${esc(fmtCode(r.code))} finns inte i artikellistan, men enligt hyllguiden står nummer som börjar på <b>${esc(r.guess.prefix)}</b> på hylla ${esc(main.shelf)}.`
+          : `${why} ${r.guess.examples ? `har lagts här tidigare (${r.guess.n} exempel)` : `ligger oftast här${r.guess.n ? ` (${r.guess.n} kända artiklar)` : ''}`}.`}</div>`;
       if (top.length > 1) h += `<div class="alts">${top.slice(1).map(t => `<span class="alt">annars ${esc(t.shelf)}${t.pct != null ? ' · ' + t.pct + '%' : ''}</span>`).join('')}</div>`;
       h += infoHtml(r, r.kind === 'guess' ? r.code : null);
       const hl = {}; top.slice(1).forEach(t => hl[t.shelf] = 'alt'); hl[main.shelf] = 'main';
@@ -318,7 +321,7 @@
   $('#typeField').addEventListener('input', () => {
     const r = typed();
     $('#typeOut').innerHTML = !r ? '' : r.kind === 'exact' ? `<p><b>Hylla ${esc(r.shelf)}</b> – exakt</p>`
-      : r.kind === 'guess' ? `<p>Troligen <b>hylla ${esc(r.guess.top[0].shelf)}</b>${r.guess.top[0].pct != null ? ' (' + r.guess.top[0].pct + '%)' : ''}</p>` : '';
+      : r.kind === 'guess' ? `<p>${r.guess.source === 'regel' ? 'Enligt hyllguiden' : 'Troligen'} <b>hylla ${esc(r.guess.top[0].shelf)}</b>${r.guess.top[0].pct != null ? ' (' + r.guess.top[0].pct + '%)' : ''}</p>` : '';
   });
   $('#typeGo').addEventListener('click', () => {
     const r = typed();
