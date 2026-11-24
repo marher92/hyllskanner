@@ -139,6 +139,8 @@
     if (!html) html = '<span class="muted">Ingen materialinfo än. Fånga gärna produktnamnet i rutan nästa gång, så lär sig appen vad det här numret är.</span>';
     return `<div class="info">📘 ${html}</div>`;
   }
+  const soneparLink = (code) => code && /^[A-Z0-9]{7}$/.test(code)
+    ? ` · <a href="https://www.sonepar.se/s?s=${encodeURIComponent(code)}" target="_blank" rel="noopener" style="color:var(--cyan);font-weight:700;text-decoration:none">🔎 Bild på sonepar.se</a>` : '';
   const reportLink = () => `<button class="btn" data-act="report" style="grid-column:1/-1;background:#fff;color:#b42336;border:1.5px solid #f1c6cc;padding:11px">⚠︎ Något fel? Rapportera</button>`;
 
   function show(r) {
@@ -148,7 +150,7 @@
     if (r.kind === 'exact') {
       h += `<div class="res-head"><div><div class="res-label">Hylla</div><div class="res-shelf">${esc(r.shelf)}</div></div>
         <span class="badge b-ok">✓ Exakt träff</span></div>
-        <div class="res-code">${r.via === 'SE' ? 'SE' : 'Nr'} ${esc(fmtCode(r.code))}${engine.learned.codes[r.code] ? ' · inlärd placering' : ''}</div>`;
+        <div class="res-code">${r.via === 'SE' ? 'SE' : 'Nr'} ${esc(fmtCode(r.code))}${engine.learned.codes[r.code] ? ' · inlärd placering' : ''}${soneparLink(r.code)}</div>`;
       h += infoHtml(r, r.code);
       h += mapHtml({ [r.shelf]: 'main' });
       h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(r.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
@@ -167,7 +169,7 @@
         <span class="badge ${byRule ? 'b-ok' : 'b-guess'}">${byRule ? '📗 Hyllguiden' : 'Fingervisning'}</span></div>
         <div class="res-code">${byRule
           ? `${esc(fmtCode(r.code))} finns inte i artikellistan, men enligt hyllguiden står nummer som börjar på <b>${esc(r.guess.prefix)}</b> på hylla ${esc(main.shelf)}.`
-          : `${why} ${r.guess.examples ? `har lagts här tidigare (${r.guess.n} exempel)` : `ligger oftast här${r.guess.n ? ` (${r.guess.n} kända artiklar)` : ''}`}.`}</div>`;
+          : `${why} ${r.guess.examples ? `har lagts här tidigare (${r.guess.n} exempel)` : `ligger oftast här${r.guess.n ? ` (${r.guess.n} kända artiklar)` : ''}`}.`}${soneparLink(r.code)}</div>`;
       if (top.length > 1) h += `<div class="alts">${top.slice(1).map(t => `<span class="alt">annars ${esc(t.shelf)}${t.pct != null ? ' · ' + t.pct + '%' : ''}</span>`).join('')}</div>`;
       h += infoHtml(r, r.kind === 'guess' ? r.code : null);
       const hl = {}; top.slice(1).forEach(t => hl[t.shelf] = 'alt'); hl[main.shelf] = 'main';
