@@ -48,13 +48,13 @@
     for (const rawLine of lines) {
       const line = rawLine.replace(/[“”"'‘’]/g, ' ');
       // Landskoder: SE (ev. felläst som 5E/S3), NO, FI, DK
-      const re = /(^|[^A-Za-z0-9])(S[E3]|5E|N[O0]|F[I1l|]|DK)\s*[:.\-]?\s*([0-9OoIl| ]{2,20})/g;
+      const re = /(^|[^A-Za-z0-9])(S ?[E3F]|[5$]E|N ?[O0]|F ?[I1l|]|D ?K)\s*[:.\-]?\s*([0-9OoIl| ]{2,20})/g;
       let m; const blocked = [];
       while ((m = re.exec(line))) {
-        const cc = m[2].toUpperCase();
+        const cc = m[2].toUpperCase().replace(/ /g, '');
         const d = digitsOnly(m[3]);
         blocked.push([m.index, re.lastIndex]);
-        if (/^(SE|S3|5E)$/.test(cc)) {
+        if (/^(SE|S3|SF|5E|\$E)$/.test(cc)) {
           if (d.length >= 7) out.se.push(d.slice(0, 7));
           else if (d.length >= 2) out.seParts.push(d);
         }

@@ -30,13 +30,14 @@
 
   async function startCamera() {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }
     });
     video.srcObject = stream;
     await video.play();
     try { // autofokus om telefonen tillåter
       const [track] = stream.getVideoTracks(); const caps = track.getCapabilities ? track.getCapabilities() : {};
       if (caps.focusMode && caps.focusMode.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      if (caps.zoom && caps.zoom.max >= 1.5) await track.applyConstraints({ advanced: [{ zoom: Math.min(2, caps.zoom.max) }] });
     } catch (e) {}
   }
 
@@ -48,7 +49,7 @@
     const ox = (vw * scale - box.width) / 2, oy = (vh * scale - box.height) / 2;
     const sx = (f.left - box.left + ox) / scale, sy = (f.top - box.top + oy) / scale;
     const sw = f.width / scale, sh = f.height / scale;
-    const longSide = 1100, k = longSide / Math.max(sw, sh);
+    const longSide = 1400, k = Math.min(2, longSide / Math.max(sw, sh));
     const w = Math.round(sw * k), h = Math.round(sh * k);
     if (tall) { canvas.width = h; canvas.height = w; } else { canvas.width = w; canvas.height = h; }
     ctx.save();
@@ -96,17 +97,19 @@
   }
   function handle(r) {
     live.textContent = r.text.replace(/\s+/g, ' ').trim().slice(0, 160);
-    history.push(keyOf(r)); if (history.length > 4) history.shift();
+    history.push(keyOf(r)); if (history.length > 5) history.shift();
     const k = history[history.length - 1];
-    const same = (n) => history.length >= n && history.slice(-n).every(x => x === k);
     if (k === 'N') return;
+    const seen = history.filter(x => x === k).length;
+    // Exakta nummer: 2 av de senaste 5 läsningarna. Gissningar: 3 av 5, och bara om inget exakt nummer syns.
+    const exactSeen = history.some(x => x[0] === 'E' || x[0] === 'C');
     const need = (r.kind === 'exact' || r.kind === 'choice') ? 2 : 3;
-    if (same(need)) { stopScan(); show(r); }
+    if (seen >= need && (need === 2 || !exactSeen)) { stopScan(); show(r); }
   }
 
   function startScan() {
     history = []; scanning = true; $('#sheet').classList.remove('open');
-    $('#hint').textContent = tall ? 'Etiketten står på högkant – rikta rutan längs texten' : 'Rikta rutan mot SE-numret eller produktnamnet';
+    $('#hint').textContent = tall ? 'Etiketten står på högkant – rikta rutan längs texten' : 'Rikta mot SE-numret – håll telefonen 15–25 cm bort';
     loop();
   }
   function stopScan() { scanning = false; frame.classList.remove('busy'); }
@@ -280,6 +283,9 @@
   $('#pasteBtn').addEventListener('click', doPaste);
   $('#startPaste').addEventListener('click', doPaste);
   $('#imgBtn').addEventListener('click', () => $('#imgInput').click());
+  $('#snapBtn').addEventListener('click', () => $('#snapInput').click());
+  $('#startSnap').addEventListener('click', () => $('#snapInput').click());
+  $('#snapInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) readImage(f); });
   $('#startImg').addEventListener('click', () => $('#imgInput').click());
   $('#imgInput').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) readImage(f); });
 
@@ -291,7 +297,7 @@
   $('#rotBtn').addEventListener('click', () => {
     tall = !tall; frame.classList.toggle('tall', tall);
     $('#rotBtn').textContent = tall ? '↺' : '↻'; $('#rotBtn').style.background = tall ? 'var(--cyan)' : '';
-    if (scanning) { history = []; $('#hint').textContent = tall ? 'Etiketten står på högkant – rikta rutan längs texten' : 'Rikta rutan mot SE-numret eller produktnamnet'; }
+    if (scanning) { history = []; $('#hint').textContent = tall ? 'Etiketten står på högkant – rikta rutan längs texten' : 'Rikta mot SE-numret – håll telefonen 15–25 cm bort'; }
   });
   $('#menuBtn').addEventListener('click', () => {
     const L = engine.learned;
