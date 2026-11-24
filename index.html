@@ -154,10 +154,25 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     <div class="row"><button class="btn" data-close>Stäng</button><button class="btn ok" id="typeGo">Visa</button></div>
   </div></div>
 
+  <div class="modal" id="reportModal"><div class="panel">
+    <h2>Vad blev fel?</h2>
+    <p class="muted" id="repWhat"></p>
+    <div class="choices">
+      <button class="choice" id="repShelfBtn"><span>Fel hylla</span><span>›</span></button>
+      <button class="choice" id="repTypeBtn"><span>Fel produkttyp / info</span><span>›</span></button>
+      <button class="choice" id="repNumBtn"><span>Fel nummer lästes</span><span>›</span></button>
+    </div>
+    <div class="choices" id="repTypes" hidden style="max-height:40vh;overflow:auto"></div>
+    <textarea id="repComment" class="field" rows="2" placeholder="Kommentar (valfritt)" style="font-size:16px;font-weight:500;margin-top:12px;letter-spacing:0"></textarea>
+    <p class="muted" id="repDone"></p>
+    <div class="row"><button class="btn" data-close>Stäng</button><button class="btn ok" id="repSave">Spara kommentar</button></div>
+  </div></div>
+
   <div class="modal" id="menuModal"><div class="panel">
     <h2>Meny</h2>
     <p class="muted" id="stats"></p>
-    <div class="row"><button class="btn" id="exportBtn">Exportera inlärning</button><button class="btn" id="mapBtn">Visa hela kartan</button></div>
+    <div class="row"><button class="btn ok" id="sendRepBtn">Skicka felrapporter</button><button class="btn" id="mapBtn">Visa hela kartan</button></div>
+    <div class="row"><button class="btn" id="exportBtn">Exportera inlärning</button><button class="btn" id="clearRepBtn">Rensa felrapporter</button></div>
     <div class="row"><button class="btn" id="resetBtn" style="color:#b42336">Nollställ inlärning</button><button class="btn" data-close>Stäng</button></div>
   </div></div>
 </div>

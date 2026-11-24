@@ -119,15 +119,22 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmtCode = (c) => /^\d{7}$/.test(c) ? c.slice(0, 2) + ' ' + c.slice(2, 5) + ' ' + c.slice(5) : c;
 
+  function infoFor(r, code) {
+    if (r.gloss && r.gloss[0]) return { g: r.gloss[0], src: 'läst på förpackningen' };
+    const fc = code && engine.glossForCode(code);
+    if (fc && fc.g) return { g: fc.g, src: fc.source === 'artikel' ? 'inlärt för det här numret' : 'gissat från varugruppen' };
+    return { g: null, src: '' };
+  }
   function infoHtml(r, code) {
-    let g = (r.gloss && r.gloss[0]) || (code && engine.glossForCode(code));
+    const { g, src } = infoFor(r, code);
     const name = code && engine.learned.names[code];
     let html = '';
-    if (g) html += `<b>${esc(g.namn)}</b> – ${esc(g.info)}`;
+    if (g) html += `<b>${esc(g.namn)}</b> – ${esc(g.info)} <span class="muted">(${esc(src)})</span>`;
     if (name) html += `${html ? '<br>' : ''}<span class="muted">Senast läst på förpackningen: ${esc(name)}</span>`;
     if (!html) html = '<span class="muted">Ingen materialinfo än. Fånga gärna produktnamnet i rutan nästa gång, så lär sig appen vad det här numret är.</span>';
     return `<div class="info">📘 ${html}</div>`;
   }
+  const reportLink = () => `<button class="btn" data-act="report" style="grid-column:1/-1;background:#fff;color:#b42336;border:1.5px solid #f1c6cc;padding:11px">⚠︎ Något fel? Rapportera</button>`;
 
   function show(r) {
     current = r;
@@ -140,11 +147,11 @@
       h += infoHtml(r, r.code);
       h += mapHtml({ [r.shelf]: 'main' });
       h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(r.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
-        <button class="btn primary" data-act="next">Skanna nästa</button></div>`;
+        <button class="btn primary" data-act="next">Skanna nästa</button>${reportLink()}</div>`;
     } else if (r.kind === 'choice') {
       h += `<div class="res-label">Flera nummer hittades – vilket gäller?</div><div class="choices">` +
         r.options.map(o => `<button class="choice" data-pick="${esc(o.code)}"><span>${esc(fmtCode(o.code))}</span><span>${esc(o.shelf)}</span></button>`).join('') +
-        `</div><div class="actions"><button class="btn primary" data-act="next">Skanna igen</button></div>`;
+        `</div><div class="actions"><button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
     } else if (r.kind === 'guess' || r.kind === 'gloss') {
       const top = r.guess.top, main = top[0];
       const why = r.kind === 'guess'
@@ -158,14 +165,14 @@
       const hl = {}; top.slice(1).forEach(t => hl[t.shelf] = 'alt'); hl[main.shelf] = 'main';
       h += mapHtml(hl);
       h += `<div class="actions"><button class="btn ok" data-act="confirm">✓ Stämmer – hylla ${esc(main.shelf)}</button><button class="btn" data-act="other">Står på annan hylla</button>
-        <button class="btn primary" data-act="next">Skanna igen</button></div>`;
+        <button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
     } else if (r.kind === 'glossOnly') {
       h += `<div class="res-head"><div><div class="res-label">Ingen hylla än</div></div><span class="badge b-none">Okänd placering</span></div>
         <div class="res-code">Inget artikelnummer hittades. Det ser ut som <b>${esc(r.gloss[0].namn.toLowerCase())}</b>, men appen vet inte var sådant brukar ligga än. Tala om vilken hylla den står på, så lär den sig.</div>`;
       h += infoHtml(r, null);
       h += mapHtml({});
       h += `<div class="actions"><button class="btn" data-act="other">Den står på …</button><button class="btn" data-act="type">Skriv nummer</button>
-        <button class="btn primary" data-act="next">Skanna igen</button></div>`;
+        <button class="btn primary" data-act="next">Skanna igen</button>${reportLink()}</div>`;
     }
     body.innerHTML = h;
     $('#sheet').classList.add('open');
@@ -202,7 +209,46 @@
     if (act === 'confirm') confirm(current.kind === 'exact' ? current.shelf : current.guess.top[0].shelf);
     if (act === 'other') openPicker();
     if (act === 'type') openType();
+    if (act === 'report') openReport();
   });
+
+  // ---------- Felrapport ----------
+  let pickMode = 'confirm';
+  function curCode() { const r = current || {}; return r.kind === 'exact' ? r.code : (r.code && r.code.length === 7 ? r.code : null); }
+  function curShelf() { const r = current || {}; return r.kind === 'exact' ? r.shelf : (r.guess && r.guess.top[0] ? r.guess.top[0].shelf : null); }
+  function addReport(typ, rattelse) {
+    const r = current || {};
+    const info = infoFor(r, curCode());
+    const L = engine.learned; L.reports = L.reports || [];
+    L.reports.push({ tid: new Date().toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }), typ, nummer: curCode() || r.code || null,
+      appensHylla: curShelf(), appensTyp: info.g ? info.g.namn : null, rattelse: rattelse || null,
+      kommentar: ($('#repComment').value || '').trim() || null, last: (r.text || '').replace(/\s+/g, ' ').trim().slice(0, 200) });
+    saveLearned();
+  }
+  function openReport() {
+    const code = curCode();
+    $('#repWhat').textContent = code ? `Nr ${fmtCode(code)}${curShelf() ? ' · hylla ' + curShelf() : ''}` : 'Det här resultatet';
+    $('#repComment').value = ''; $('#repTypes').hidden = true; $('#repDone').textContent = '';
+    $('#repTypeBtn').disabled = !code;
+    $('#reportModal').classList.add('open');
+  }
+  $('#repShelfBtn').addEventListener('click', () => { $('#reportModal').classList.remove('open'); pickMode = 'report'; openPicker(); });
+  $('#repTypeBtn').addEventListener('click', () => {
+    const list = engine.glossary.filter(g => g.id !== 'serie').slice().sort((a, b) => a.namn.localeCompare(b.namn, 'sv'));
+    $('#repTypes').innerHTML = `<button class="choice" data-g="none"><span>Vet inte / ingen av dessa</span><span>–</span></button>` +
+      list.map(g => `<button class="choice" data-g="${g.id}"><span>${esc(g.namn)}</span><span></span></button>`).join('');
+    $('#repTypes').hidden = false;
+  });
+  $('#repTypes').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-g]'); if (!b) return;
+    const code = curCode(); const before = infoFor(current, code).g;
+    engine.setCodeGloss(code, b.dataset.g, before && before.id);
+    addReport('fel produkttyp', b.dataset.g === 'none' ? 'ingen/vet ej' : engine.glossById(b.dataset.g).namn);
+    saveLearned();
+    current.gloss = []; $('#reportModal').classList.remove('open'); show(current);
+  });
+  $('#repNumBtn').addEventListener('click', () => { addReport('fel nummer läst'); $('#reportModal').classList.remove('open'); startScan(); });
+  $('#repSave').addEventListener('click', () => { addReport('kommentar'); $('#repDone').textContent = '✓ Sparad. Skicka rapporterna via menyn ⋯'; });
 
   // ---------- Hyllväljare ----------
   function openPicker() {
@@ -211,7 +257,9 @@
   }
   $('#pickGrid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-s]'); if (!b) return;
-    $('#pickModal').classList.remove('open'); confirm(b.dataset.s);
+    $('#pickModal').classList.remove('open');
+    if (pickMode === 'report') { pickMode = 'confirm'; addReport('fel hylla', 'hylla ' + b.dataset.s); }
+    confirm(b.dataset.s);
   });
 
   // ---------- Skriv nummer ----------
@@ -301,9 +349,16 @@
   });
   $('#menuBtn').addEventListener('click', () => {
     const L = engine.learned;
-    $('#stats').textContent = `${Object.keys(self.CATALOG).length} artiklar i listan · ${Object.keys(self.PREFIX_RULES).length} prefixregler · ${L.count || 0} bekräftade placeringar · ${Object.keys(L.codes).length} egna/ändrade nummer. Inlärningen sparas bara i den här telefonen.`;
+    $('#stats').textContent = `${Object.keys(self.CATALOG).length} artiklar i listan · ${Object.keys(self.PREFIX_RULES).length} prefixregler · ${L.count || 0} bekräftade placeringar · ${Object.keys(L.codes).length} egna/ändrade nummer · ${(L.reports || []).length} felrapporter. Inlärningen sparas bara i den här telefonen.`;
     $('#menuModal').classList.add('open');
   });
+  $('#sendRepBtn').addEventListener('click', async () => {
+    const reps = engine.learned.reports || [];
+    if (!reps.length) { $('#stats').textContent = 'Inga felrapporter än.'; return; }
+    const text = 'Hyllskanner – felrapporter\n\n' + reps.map((r, i) => `${i + 1}. ${r.tid} · ${r.typ}\n   Nummer: ${r.nummer || '–'} · Appen sa: hylla ${r.appensHylla || '–'}${r.appensTyp ? ', ' + r.appensTyp : ''}\n   Rättelse: ${r.rattelse || '–'}${r.kommentar ? '\n   Kommentar: ' + r.kommentar : ''}\n   Läst text: ${r.last || '–'}`).join('\n\n');
+    try { if (navigator.share) { await navigator.share({ text }); } else { await navigator.clipboard.writeText(text); $('#stats').textContent = 'Kopierat – klistra in i chatten med Claude.'; } } catch (e) {}
+  });
+  $('#clearRepBtn').addEventListener('click', () => { if (window.confirm('Radera alla felrapporter?')) { engine.learned.reports = []; saveLearned(); $('#menuModal').classList.remove('open'); } });
   $('#exportBtn').addEventListener('click', async () => {
     const blob = new Blob([JSON.stringify(engine.learned, null, 1)], { type: 'application/json' });
     const file = new File([blob], 'hyllskanner-inlarning.json', { type: 'application/json' });

@@ -139,12 +139,32 @@
     return { top, n: seen };
   };
 
-  // Materialtyp för en varugrupp (första 3 siffrorna), inlärt från bekräftelser.
+  // Materialtyp för ett nummer: först exakt inlärt per artikel, sedan varugrupp (4 siffror) om minst 2 bekräftelser är överens.
+  // Returnerar { g, source: 'artikel' | 'grupp' } eller null.
   Engine.prototype.glossForCode = function (code) {
-    const m = this.learned.prefKw[code.slice(0, 3)];
+    const L = this.learned;
+    if (!code) return null;
+    const cg = (L.codeGloss || {})[code];
+    if (cg === 'none') return { g: null, source: 'artikel' };
+    if (cg) { const g = this.glossById(cg); if (g) return { g, source: 'artikel' }; }
+    const m = (L.prefKw || {})[code.slice(0, 4)];
     if (!m) return null;
-    const best = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
-    return best ? this.glossById(best[0]) : null;
+    const entries = Object.entries(m).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((a, [, c]) => a + c, 0);
+    const [id, c] = entries[0] || [];
+    if (!id || c < 2 || c / total < 0.75) return null;
+    const g = this.glossById(id);
+    return g ? { g, source: 'grupp' } : null;
+  };
+
+  // Rätta produkttyp för ett nummer (felrapport). id = glossary-id eller 'none'.
+  Engine.prototype.setCodeGloss = function (code, id, wrongId) {
+    const L = this.learned;
+    L.codeGloss = L.codeGloss || {};
+    L.codeGloss[code] = id;
+    const p = code.slice(0, 4);
+    if (wrongId && L.prefKw && L.prefKw[p] && L.prefKw[p][wrongId]) { L.prefKw[p][wrongId] -= 1; if (L.prefKw[p][wrongId] <= 0) delete L.prefKw[p][wrongId]; }
+    if (id !== 'none') { L.prefKw = L.prefKw || {}; (L.prefKw[p] = L.prefKw[p] || {})[id] = (L.prefKw[p][id] || 0) + 1; }
   };
 
   // Huvudfunktion: tolka en läsning.
@@ -179,9 +199,13 @@
     if (code && /^[A-Z0-9]{7}$/.test(code)) {
       if (this.catalog[code] !== shelf) L.codes[code] = shelf; else delete L.codes[code];
       if (name) L.names[code] = name;
-      for (const id of glossIds || []) {
-        const p = code.slice(0, 3);
-        (L.prefKw[p] = L.prefKw[p] || {})[id] = ((L.prefKw[p] || {})[id] || 0) + 1;
+      // Produkttyp sparas bara när den lästes på själva förpackningen (glossIds kommer från texten)
+      if (glossIds && glossIds[0]) {
+        L.codeGloss = L.codeGloss || {};
+        if (!L.codeGloss[code]) L.codeGloss[code] = glossIds[0];
+        const p = code.slice(0, 4);
+        L.prefKw = L.prefKw || {};
+        (L.prefKw[p] = L.prefKw[p] || {})[glossIds[0]] = (L.prefKw[p][glossIds[0]] || 0) + 1;
       }
     }
     for (const id of glossIds || []) {
