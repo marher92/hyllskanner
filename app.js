@@ -308,7 +308,19 @@
   });
 
   // ---------- Skriv nummer ----------
-  function openType() { stopScan(); $('#typeModal').classList.add('open'); $('#typeOut').innerHTML = ''; const f = $('#typeField'); f.value = ''; setTimeout(() => f.focus(), 50); }
+  // iPhone visar bara tangentbordet om fältet fokuseras direkt i samma tryck – därför ingen fördröjning här.
+  function openType() {
+    const f = $('#typeField');
+    $('#typeModal').classList.add('open');
+    f.value = ''; $('#typeOut').innerHTML = '';
+    f.focus(); f.click();
+    stopScan();
+  }
+  $('#abcBtn').addEventListener('click', () => {
+    const f = $('#typeField'); const txt = f.getAttribute('inputmode') === 'numeric';
+    f.setAttribute('inputmode', txt ? 'text' : 'numeric'); $('#abcBtn').textContent = txt ? '123' : 'ABC';
+    f.blur(); f.focus();
+  });
   function typed() {
     const v = $('#typeField').value.trim();
     if (!v) return null;

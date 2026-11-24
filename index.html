@@ -146,9 +146,10 @@ video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
     <div class="row"><button class="btn" data-close>Avbryt</button></div>
   </div></div>
 
-  <div class="modal" id="typeModal"><div class="panel">
+  <div class="modal" id="typeModal" style="align-items:flex-start"><div class="panel" style="border-radius:0 0 24px 24px;padding-top:calc(var(--st) + 18px)">
     <h2>Skriv artikelnummer</h2>
-    <input class="field" id="typeField" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="t.ex. 1822116">
+    <div style="display:flex;gap:8px"><input class="field" id="typeField" inputmode="numeric" enterkeyhint="go" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="t.ex. 1822116" style="flex:1;min-width:0">
+    <button class="btn" id="abcBtn" type="button" style="flex:0 0 64px">ABC</button></div>
     <p class="muted">SE-numret (7 tecken). Skriver du bara början visas den troligaste hyllan.</p>
     <div id="typeOut"></div>
     <div class="row"><button class="btn" data-close>Stäng</button><button class="btn ok" id="typeGo">Visa</button></div>
