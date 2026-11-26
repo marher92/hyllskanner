@@ -1,6 +1,6 @@
 // Offline: allt sparas i telefonen efter första besöket. Byt VERSION när filer ändras.
-const VERSION = 'hyllskanner-v12';
-const FILES = ['./', 'index.html', 'app.js', 'engine.js', 'map.js', 'data.js', 'prefixes.js', 'glossary.js',
+const VERSION = 'hyllskanner-v13';
+const FILES = ['./', 'index.html', 'app.js', 'engine.js', 'map.js', 'data.js', 'prefixes.js', 'glossary.js', 'plock.js',
   'manifest.webmanifest', 'logo.png', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'vendor/tesseract.min.js', 'vendor/worker.min.js', 'vendor/tesseract-core-lstm.wasm.js',
   'vendor/tesseract-core-simd-lstm.wasm.js', 'vendor/lang/eng.traineddata.gz'];
